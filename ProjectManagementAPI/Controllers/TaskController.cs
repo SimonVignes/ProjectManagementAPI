@@ -4,7 +4,7 @@ using ProjectManagementAPI.Models;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
-namespace  ProjectManagementAPI.Controllers;
+namespace ProjectManagementAPI.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
@@ -29,11 +29,11 @@ public class TaskController : Controller
     {
         // Getting subtask by id from database
         SubTaskItem? subTask = db.GetSubTaskById(id);
-        if (subTask == null)
+        if (subTask != null)
         {
-            return NotFound($"Subtask with id {id} was not found");
+            return Ok(subTask);
         }
-        return Ok(subTask);
+        return NotFound($"Subtask with id {id} was not found");
 
     }
 
@@ -56,9 +56,9 @@ public class TaskController : Controller
         // Updating subtask in database
         if (db.UpdateSubTask(subTask))
         {
-            return NotFound(subTask);
+            return Ok(db.GetSubTasks());
         }
-        return Ok(db.GetSubTasks());
+        return NotFound(subTask);
 
     }
 
@@ -69,8 +69,8 @@ public class TaskController : Controller
         // Deleting subtask from database
         if (db.DeleteSubTask(id))
         {
-            return NotFound();
+            return Ok(db.GetSubTasks());
         }
-        return Ok(db.GetSubTasks());
+        return NotFound();
     }
 }

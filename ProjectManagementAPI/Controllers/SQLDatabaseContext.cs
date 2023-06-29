@@ -98,7 +98,7 @@ public class SQLDatabaseContext
 
 
     // Getting all projects
-    public List<ProjectItem>? GetProjects()
+    public List<ProjectItem> GetProjects()
     {
         connection.Open();
 
@@ -106,7 +106,7 @@ public class SQLDatabaseContext
         var command = new SqliteCommand(query, connection);
         var reader = command.ExecuteReader();
 
-        List<ProjectItem> projects = new List<ProjectItem> { };
+        List<ProjectItem> projects = new List<ProjectItem>();
         while (reader.Read())
         {
             ProjectItem project = ReadProjectItem(reader);
@@ -117,6 +117,46 @@ public class SQLDatabaseContext
 
         return projects;
 
+
+    }
+    public List<EpicItem> GetEpics()
+    {
+        connection.Open();
+
+        var query = "SELECT * FROM Epic;";
+        var command = new SqliteCommand(query, connection);
+        var reader = command.ExecuteReader();
+
+        List<EpicItem> epics = new List<EpicItem>();
+        while (reader.Read())
+        {
+            var epic = ReadEpicItem(reader);
+            epics.Add(epic);
+        }
+
+        connection.Close();
+
+        return epics;
+    }
+
+    public List<SubTaskItem> GetSubTasks()
+    {
+        connection.Open();
+
+        var query = "SELECT * FROM SubTask;";
+        var command = new SqliteCommand(query, connection);
+        var reader = command.ExecuteReader();
+
+        List<SubTaskItem> subtasks = new List<SubTaskItem>();
+        while (reader.Read())
+        {
+            var subtask = ReadSubTaskItem(reader);
+            subtasks.Add(subtask);
+        }
+
+        connection.Close();
+
+        return subtasks;
     }
 
     public ProjectItem? GetProjectById(int id)
@@ -139,24 +179,52 @@ public class SQLDatabaseContext
         return project;
     }
 
-
-    private ProjectItem ReadProjectItem(SqliteDataReader reader)
+    public EpicItem? GetEpicById(int id)
     {
-        var project = new ProjectItem
+        connection.Open();
+
+        // Avoiding SQL injection
+        var query = $"SELECT * FROM Epic WHERE epic_id = @id;";
+        var command = new SqliteCommand(query, connection);
+        command.Parameters.AddWithValue("@id", id);
+        var reader = command.ExecuteReader();
+
+        EpicItem? epic = null;
+        if (reader.Read())
         {
-            Project_id = reader.GetInt32(0),
-            Name = reader.GetString(1),
-            Description = reader.GetString(2),
-            ProjectManager = reader.GetString(3)
-        };
-        return project;
+            epic = ReadEpicItem(reader);
+        }
+
+        connection.Close();
+
+        return epic;
     }
+
+    public SubTaskItem? GetSubTaskById(int id)
+    {
+        connection.Open();
+
+        // Avoiding SQL injection
+        var query = $"SELECT * FROM SubTask WHERE subtask_id = @id;";
+        var command = new SqliteCommand(query, connection);
+        command.Parameters.AddWithValue("@id", id);
+        var reader = command.ExecuteReader();
+
+        SubTaskItem? subtask = null;
+        if (reader.Read())
+        {
+            subtask = ReadSubTaskItem(reader);
+        }
+
+        connection.Close();
+
+        return subtask;
+    }
+
 
 
     public bool AddProject(ProjectItem project)
     {
-
-
         connection.Open();
 
         var query = "SELECT * FROM Project WHERE project_id = @id;";
@@ -168,7 +236,6 @@ public class SQLDatabaseContext
         {
             return false; // Project already exists, return false
         }
-
 
         var insertQuery = "INSERT INTO Project (project_id, name, description, project_manager) VALUES (@Project_id, @Name, @Description, @ProjectManager);";
         var insertCommand = new SqliteCommand(insertQuery, connection);
@@ -184,7 +251,60 @@ public class SQLDatabaseContext
 
     }
 
+    public bool AddEpic(EpicItem epic)
+    {
+        connection.Open();
 
+        var query = "SELECT * FROM Epic WHERE name = @name;";
+        var command = new SqliteCommand(query, connection);
+        command.Parameters.AddWithValue("@name", epic.Name);
+        var reader = command.ExecuteReader();
+
+        if (reader.Read())
+        {
+            return false; // Epic already exists, return false
+        }
+
+        var insertQuery = "INSERT INTO Epic (epic_id, name, description, project_id) VALUES (@Epic_id, @Name, @Description, @Project_id);";
+        var insertCommand = new SqliteCommand(insertQuery, connection);
+        insertCommand.Parameters.AddWithValue("@Name", epic.Name);
+        insertCommand.Parameters.AddWithValue("@Description", epic.Description);
+        insertCommand.Parameters.AddWithValue("@Project_id", epic.Project_id);
+        insertCommand.Parameters.AddWithValue("@Epic_id", epic.Epic_id);
+        insertCommand.ExecuteNonQuery();
+
+        connection.Close();
+
+        return true;
+    }
+
+    public bool AddSubTask(SubTaskItem subtask)
+    {
+        connection.Open();
+
+        var query = "SELECT * FROM SubTask WHERE subtask_id = @id;";
+        var command = new SqliteCommand(query, connection);
+        command.Parameters.AddWithValue("@id", subtask.Subtask_id);
+        var reader = command.ExecuteReader();
+
+        if (reader.Read())
+        {
+            return false; // SubTask already exists, return false
+        }
+        
+        var insertQuery = "INSERT INTO SubTask (subtask_id, name, description, epic_id) VALUES (@Subtask_id, @Name, @Description, @Epic_id);";
+        var insertCommand = new SqliteCommand(insertQuery, connection);
+        insertCommand.Parameters.AddWithValue("@Name", subtask.TaskName);
+        insertCommand.Parameters.AddWithValue("@Description", subtask.Description);
+        insertCommand.Parameters.AddWithValue("@Epic_id", subtask.Epic_id);
+        insertCommand.Parameters.AddWithValue("@Subtask_id", subtask.Subtask_id);
+        insertCommand.ExecuteNonQuery();
+
+        connection.Close();
+
+        return true;
+
+    }
 
     public bool UpdateProject(ProjectItem project)
     {
@@ -214,6 +334,61 @@ public class SQLDatabaseContext
         return true;
     }
 
+    public bool UpdateEpic(EpicItem epic)
+    {
+        connection.Open();
+
+        // Checking if the epic exists
+        var query = $"SELECT * FROM Epic WHERE epic_id = {epic.Epic_id};";
+        var command = new SqliteCommand(query, connection);
+        var reader = command.ExecuteReader();
+
+        if (!reader.Read())
+        {
+            return false; // Epic does not exist, return false
+        }
+
+        // Updating the epic
+        query = $"UPDATE Epic SET name = @Name, description = @Description, project_id = @Project_id WHERE epic_id = @Epic_id;";
+        command = new SqliteCommand(query, connection);
+        command.Parameters.AddWithValue("@Name", epic.Name);
+        command.Parameters.AddWithValue("@Description", epic.Description);
+        command.Parameters.AddWithValue("@Project_id", epic.Project_id);
+        command.Parameters.AddWithValue("@Epic_id", epic.Epic_id);
+        command.ExecuteNonQuery();
+
+        connection.Close();
+
+        return true;
+    }
+
+    public bool UpdateSubTask(SubTaskItem subtask)
+    {
+        connection.Open();
+
+        // Checking if the subtask exists
+        var query = $"SELECT * FROM SubTask WHERE subtask_id = {subtask.Subtask_id};";
+        var command = new SqliteCommand(query, connection);
+        var reader = command.ExecuteReader();
+
+        if (!reader.Read())
+        {
+            return false; // SubTask does not exist, return false
+        }
+
+        // Updating the subtask
+        query = $"UPDATE SubTask SET name = @Name, description = @Description, epic_id = @Epic_id WHERE subtask_id = @Subtask_id;";
+        command = new SqliteCommand(query, connection);
+        command.Parameters.AddWithValue("@Name", subtask.TaskName);
+        command.Parameters.AddWithValue("@Description", subtask.Description);
+        command.Parameters.AddWithValue("@Epic_id", subtask.Epic_id);
+        command.Parameters.AddWithValue("@Subtask_id", subtask.Subtask_id);
+        command.ExecuteNonQuery();
+
+        connection.Close();
+
+        return true;
+    }
 
     public bool DeleteProject(int id)
     {
@@ -242,113 +417,6 @@ public class SQLDatabaseContext
         // Deleting the project
         query = $"DELETE FROM Project WHERE project_id = {id};";
         command = new SqliteCommand(query, connection);
-        command.ExecuteNonQuery();
-
-        connection.Close();
-
-        return true;
-    }
-
-    public List<EpicItem> GetEpics()
-    {
-        connection.Open();
-
-        var query = "SELECT * FROM Epic;";
-        var command = new SqliteCommand(query, connection);
-        var reader = command.ExecuteReader();
-
-        var epics = new List<EpicItem>();
-        while (reader.Read())
-        {
-            var epic = ReadEpicItem(reader);
-            epics.Add(epic);
-        }
-
-        connection.Close();
-
-        return epics;
-    }
-
-    public EpicItem? GetEpicById(int id)
-    {
-        connection.Open();
-
-        // Avoiding SQL injection
-        var query = $"SELECT * FROM Epic WHERE epic_id = @id;";
-        var command = new SqliteCommand(query, connection);
-        command.Parameters.AddWithValue("@id", id);
-        var reader = command.ExecuteReader();
-
-        EpicItem? epic = null;
-        if (reader.Read())
-        {
-            epic = ReadEpicItem(reader);
-        }
-
-        connection.Close();
-
-        return epic;
-    }
-
-    public EpicItem ReadEpicItem(SqliteDataReader reader)
-    {
-        var epic = new EpicItem
-        {
-            Epic_id = reader.GetInt32(0),
-            Name = reader.GetString(1),
-            Description = reader.GetString(2),
-            Project_id = reader.GetInt32(3)
-        };
-        return epic;
-    }
-
-    public bool AddEpic(EpicItem epic)
-    {
-        connection.Open();
-
-        var query = "SELECT * FROM Epic WHERE name = @name;";
-        var command = new SqliteCommand(query, connection);
-        command.Parameters.AddWithValue("@name", epic.Name);
-        var reader = command.ExecuteReader();
-
-        if (reader.Read())
-        {
-            return false; // Epic already exists, return false
-        }
-
-        var insertQuery = "INSERT INTO Epic (name, description, project_id) VALUES (@Name, @Description, @Project_id);";
-        var insertCommand = new SqliteCommand(insertQuery, connection);
-        insertCommand.Parameters.AddWithValue("@Name", epic.Name);
-        insertCommand.Parameters.AddWithValue("@Description", epic.Description);
-        insertCommand.Parameters.AddWithValue("@Project_id", epic.Project_id);
-        insertCommand.ExecuteNonQuery();
-
-        connection.Close();
-
-        return true;
-    }
-
-    public bool UpdateEpic(EpicItem epic)
-    {
-        connection.Open();
-
-        // Checking if the epic exists
-        var query = $"SELECT * FROM Epic WHERE epic_id = {epic.Epic_id};";
-        var command = new SqliteCommand(query, connection);
-        var reader = command.ExecuteReader();
-
-        if (!reader.Read())
-        {
-            return false; // Epic does not exist, return false
-        }
-
-        // Updating the epic
-        query = $"UPDATE Epic SET name = @Name, description = @Description, project_id = @Project_id WHERE epic_id = @Epic_id;";
-        command = new SqliteCommand(query, connection);
-        command.Parameters.AddWithValue("@Name", epic.Name);
-        command.Parameters.AddWithValue("@Description", epic.Description);
-        command.Parameters.AddWithValue("@Project_id", epic.Project_id);
-        command.Parameters.AddWithValue("@Epic_id", epic.Epic_id);
         command.ExecuteNonQuery();
 
         connection.Close();
@@ -389,115 +457,6 @@ public class SQLDatabaseContext
         return true;
     }
 
-
-    public List<SubTaskItem> GetSubTasks()
-    {
-        connection.Open();
-
-        var query = "SELECT * FROM SubTask;";
-        var command = new SqliteCommand(query, connection);
-        var reader = command.ExecuteReader();
-
-        var subtasks = new List<SubTaskItem>();
-        while (reader.Read())
-        {
-            var subtask = ReadSubTaskItem(reader);
-            subtasks.Add(subtask);
-        }
-
-        connection.Close();
-
-        return subtasks;
-    }
-
-    public SubTaskItem? GetSubTaskById(int id)
-    {
-        connection.Open();
-
-        // Avoiding SQL injection
-        var query = $"SELECT * FROM SubTask WHERE subtask_id = @id;";
-        var command = new SqliteCommand(query, connection);
-        command.Parameters.AddWithValue("@id", id);
-        var reader = command.ExecuteReader();
-
-        SubTaskItem? subtask = null;
-        if (reader.Read())
-        {
-            subtask = ReadSubTaskItem(reader);
-        }
-
-        connection.Close();
-
-        return subtask;
-    }
-
-    public SubTaskItem ReadSubTaskItem(SqliteDataReader reader)
-    {
-        var subtask = new SubTaskItem
-        {
-            Subtask_id = reader.GetInt32(0),
-            TaskName = reader.GetString(1),
-            Description = reader.GetString(2),
-            Epic_id = reader.GetInt32(3)
-        };
-        return subtask;
-    }
-
-    public bool AddSubTask(SubTaskItem subtask)
-    {
-        connection.Open();
-
-        var query = "SELECT * FROM SubTask WHERE subtask_id = @id;";
-        var command = new SqliteCommand(query, connection);
-        command.Parameters.AddWithValue("@id", subtask.Subtask_id);
-        var reader = command.ExecuteReader();
-
-        if (reader.Read())
-        {
-            return false; // SubTask already exists, return false
-        }
-
-        var insertQuery = "INSERT INTO SubTask (name, description, epic_id) VALUES (@Name, @Description, @Epic_id);";
-        var insertCommand = new SqliteCommand(insertQuery, connection);
-        insertCommand.Parameters.AddWithValue("@Name", subtask.TaskName);
-        insertCommand.Parameters.AddWithValue("@Description", subtask.Description);
-        insertCommand.Parameters.AddWithValue("@Epic_id", subtask.Epic_id);
-        insertCommand.ExecuteNonQuery();
-
-        connection.Close();
-
-        return true;
-
-    }
-
-    public bool UpdateSubTask(SubTaskItem subtask)
-    {
-        connection.Open();
-
-        // Checking if the subtask exists
-        var query = $"SELECT * FROM SubTask WHERE subtask_id = {subtask.Subtask_id};";
-        var command = new SqliteCommand(query, connection);
-        var reader = command.ExecuteReader();
-
-        if (!reader.Read())
-        {
-            return false; // SubTask does not exist, return false
-        }
-
-        // Updating the subtask
-        query = $"UPDATE SubTask SET name = @Name, description = @Description, epic_id = @Epic_id WHERE subtask_id = @Subtask_id;";
-        command = new SqliteCommand(query, connection);
-        command.Parameters.AddWithValue("@Name", subtask.TaskName);
-        command.Parameters.AddWithValue("@Description", subtask.Description);
-        command.Parameters.AddWithValue("@Epic_id", subtask.Epic_id);
-        command.Parameters.AddWithValue("@Subtask_id", subtask.Subtask_id);
-        command.ExecuteNonQuery();
-
-        connection.Close();
-
-        return true;
-    }
-
     public bool DeleteSubTask(int id)
     {
         connection.Open();
@@ -523,7 +482,39 @@ public class SQLDatabaseContext
     }
 
 
+    private ProjectItem ReadProjectItem(SqliteDataReader reader)
+    {
+        var project = new ProjectItem
+        {
+            Project_id = reader.GetInt32(0),
+            Name = reader.GetString(1),
+            Description = reader.GetString(2),
+            ProjectManager = reader.GetString(3)
+        };
+        return project;
+    }
 
+    public EpicItem ReadEpicItem(SqliteDataReader reader)
+    {
+        var epic = new EpicItem
+        {
+            Epic_id = reader.GetInt32(0),
+            Name = reader.GetString(1),
+            Description = reader.GetString(2),
+            Project_id = reader.GetInt32(3)
+        };
+        return epic;
+    }
 
-
+    public SubTaskItem ReadSubTaskItem(SqliteDataReader reader)
+    {
+        var subtask = new SubTaskItem
+        {
+            Subtask_id = reader.GetInt32(0),
+            TaskName = reader.GetString(1),
+            Description = reader.GetString(2),
+            Epic_id = reader.GetInt32(3)
+        };
+        return subtask;
+    }
 }

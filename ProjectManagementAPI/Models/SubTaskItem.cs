@@ -8,7 +8,7 @@ public class SubTaskItem
 
     public string Description { get; set; } = string.Empty;
 
-    public string Responsible { get; set; } = string.Empty;
+    //public string Responsible { get; set; } = string.Empty;
 
     public int Epic_id { get; set; }
 }

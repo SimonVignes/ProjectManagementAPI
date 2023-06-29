@@ -31,11 +31,11 @@ namespace ProjectManagementAPI.Controllers
 
             ProjectItem? project = db.GetProjectById(id);
 
-            if (project == null)
+            if (project != null)
             {
-                return NotFound($"Project with id {id} does not exist.");
+                return Ok(project);
             }
-            return Ok(project);
+            return NotFound($"Project with id {id} does not exist.");
 
         }
 

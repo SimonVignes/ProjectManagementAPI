@@ -25,11 +25,11 @@ namespace ProjectManagementAPI.Controllers
         public ActionResult<EpicItem> GetEpicItem(int id)
         {
             EpicItem? epic = db.GetEpicById(id);
-            if (epic == null)
+            if (epic != null)
             {
-                return NotFound($"Project with id {id} was not found");
+                return Ok(epic);
             }
-            return Ok(epic);
+            return NotFound($"Project with id {id} was not found");
         }
 
         // POST api/Epic
@@ -50,10 +50,9 @@ namespace ProjectManagementAPI.Controllers
             // Only return ok if epic is updated
             if (db.UpdateEpic(epic))
             {
-                return NotFound(epic);
+                return Ok(epic);
             }
-
-            return Ok(epic);
+            return NotFound(epic);
         }
 
         // DELETE api/Epic/{id}
@@ -64,7 +63,7 @@ namespace ProjectManagementAPI.Controllers
             {
                 return Ok($"Epic with id {id} was deleted");
             }
-            return NotFound($"Epic with id {id} was not found");
+            return BadRequest($"Epic with id {id} could not be deleted");
         }
     }
 }
