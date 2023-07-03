@@ -10,6 +10,6 @@ public class EpicItem
 
     public int Project_id { get; set; }
 
-    public List<SubTaskItem>? subTaskItems { get; set; }
+    public List<SubTaskItem>? SubTasks { get; set; }
 
 }

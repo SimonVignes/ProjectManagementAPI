@@ -10,6 +10,6 @@ public class ProjectItem
 
     public string? ProjectManager { get; set; }
 
-    public List<EpicItem>? epicItems { get; set; }
+    public List<EpicItem>? Epics { get; set; }
 
 }
